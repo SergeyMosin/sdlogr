@@ -219,7 +219,7 @@ func TestWithValues(t *testing.T) {
 	log = log.WithValues("vv", "vvk")
 	log.Info("msg1")
 	log = log.WithValues("vv", "vvk")
-	log.Info("msg2")
+	log.Info("msg2", "vv", "v")
 	log = log.WithValues("vv1", "vvk")
 	log.Info("msg3")
 }

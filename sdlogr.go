@@ -71,7 +71,7 @@ func NewWithOptions(opts Options) logr.Logger {
 		depth:         opts.Depth + 1,
 		logCallerInfo: opts.LogCallerInfo,
 		out:           opts.Out,
-		valuesMap:     make(map[string]interface{}, 1),
+		valuesMap:     make(map[string]string, 1),
 	}
 	return logr.New(&l)
 }
@@ -80,7 +80,7 @@ type sdLogr struct {
 	level         int
 	depth         int
 	prefix        string
-	valuesMap     map[string]interface{}
+	valuesMap     map[string]string
 	valuesStr     string
 	out           io.Writer
 	logCallerInfo bool
@@ -197,21 +197,24 @@ func (l sdLogr) WithValues(kvList ...interface{}) logr.LogSink {
 		n++
 	}
 
+	l.valuesStr = ""
+	var lastKey *string
 	for i := 0; i < n; i++ {
-		k := kvList[i]
-		if k == "" {
-			k = emptyStringPlaceholder
+		kvi := kvList[i]
+		if kvi == "" {
+			kvi = emptyStringPlaceholder
 		}
-		i++
-		l.valuesMap[fmt.Sprintf("%v", deref(k))] = kvList[i]
+		kv := fmt.Sprintf("%v", deref(kvi))
+		if (i & 1) == 0 {
+			// kv is key
+			lastKey = &kv
+		} else {
+			// kv is value
+			l.valuesMap[*lastKey] = kv
+		}
 	}
 
-	// rebuild the string
-	l.valuesStr = ""
 	for k, v := range l.valuesMap {
-		if v == "" {
-			v = emptyStringPlaceholder
-		}
 		l.valuesStr += k + ": " + fmt.Sprintf("%v", deref(v)) + ", "
 	}
 	return &l
