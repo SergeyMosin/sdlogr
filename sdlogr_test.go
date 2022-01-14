@@ -214,6 +214,28 @@ func TestLevel(t *testing.T) {
 
 }
 
+func TestWithValues(t *testing.T) {
+	log := sdlogr.New()
+	log = log.WithValues("vv", "vvk")
+	log.Info("msg1")
+	log = log.WithValues("vv", "vvk")
+	log.Info("msg2")
+	log = log.WithValues("vv1", "vvk")
+	log.Info("msg3")
+}
+
+func TestOldNew(t *testing.T) {
+	log := sdlogr.New()
+	log.Info("msg1")
+
+	logNew := log.WithValues("vv", "vvk").WithName("new")
+	logNew.Info("logNew msg1")
+
+	err := errors.New("test_err")
+	log.Error(err, "msg2")
+	logNew.Error(err, "msg2")
+}
+
 func TestCallDepth(t *testing.T) {
 	log := sdlogr.New().WithCallDepth(0)
 	log.Info("cd 0")

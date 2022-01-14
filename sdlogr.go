@@ -71,6 +71,7 @@ func NewWithOptions(opts Options) logr.Logger {
 		depth:         opts.Depth + 1,
 		logCallerInfo: opts.LogCallerInfo,
 		out:           opts.Out,
+		valuesMap:     make(map[string]interface{}, 1),
 	}
 	return logr.New(&l)
 }
@@ -79,7 +80,8 @@ type sdLogr struct {
 	level         int
 	depth         int
 	prefix        string
-	values        string
+	valuesMap     map[string]interface{}
+	valuesStr     string
 	out           io.Writer
 	logCallerInfo bool
 }
@@ -119,8 +121,8 @@ func (l *sdLogr) Info(_ int, msg string, kvList ...interface{}) {
 		hasData = true
 	}
 
-	if l.values != "" {
-		buf.WriteString(l.values)
+	if l.valuesStr != "" {
+		buf.WriteString(l.valuesStr)
 		hasData = true
 	}
 
@@ -160,8 +162,8 @@ func (l *sdLogr) Error(err error, msg string, kvList ...interface{}) {
 		buf.WriteString(msg + ", ")
 	}
 
-	if l.values != "" {
-		buf.WriteString(l.values)
+	if l.valuesStr != "" {
+		buf.WriteString(l.valuesStr)
 	}
 
 	kvLen := len(kvList)
@@ -184,18 +186,33 @@ func (l sdLogr) WithName(name string) logr.LogSink {
 func (l sdLogr) WithValues(kvList ...interface{}) logr.LogSink {
 	// because we have data before the values string...
 	n := len(kvList)
-	for i := 0; i < n; {
-		v := kvList[i]
-		msIndex := i & 1
-		// the last kv must always have the ", " separator msIndex = 1
-		i++
-		if n == i {
-			msIndex = 1
+	if n == 0 {
+		return &l
+	}
+
+	if (n & 1) != 0 {
+		// for some reason a value is missing
+		// let's add an empty string
+		kvList = append(kvList, emptyStringPlaceholder)
+		n++
+	}
+
+	for i := 0; i < n; i++ {
+		k := kvList[i]
+		if k == "" {
+			k = emptyStringPlaceholder
 		}
+		i++
+		l.valuesMap[fmt.Sprintf("%v", deref(k))] = kvList[i]
+	}
+
+	// rebuild the string
+	l.valuesStr = ""
+	for k, v := range l.valuesMap {
 		if v == "" {
 			v = emptyStringPlaceholder
 		}
-		l.values += fmt.Sprintf("%v", deref(v)) + mergeSeparators[msIndex]
+		l.valuesStr += k + ": " + fmt.Sprintf("%v", deref(v)) + ", "
 	}
 	return &l
 }
